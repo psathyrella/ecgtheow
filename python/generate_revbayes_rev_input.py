@@ -40,15 +40,6 @@ if __name__ == '__main__':
     id_seq = parse_fasta_seqs(args.fasta_path)
 
     assert args.naive in id_seq, "Sequence %r not found in FASTA file." % args.naive
-
-    # Do we need to apply the naive sequence correction?
-    naive_name = "naive" if args.naive_correction else "_naive_"
-
-    if naive_name != args.naive:
-        id_seq[naive_name] = id_seq[args.naive]
-        del id_seq[args.naive]
-        args.naive = naive_name
-
     write_to_fasta(id_seq, args.output_fasta)
 
     temp_vars = dict(

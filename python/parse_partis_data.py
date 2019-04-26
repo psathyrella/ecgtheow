@@ -17,6 +17,9 @@ if __name__ == '__main__':
         '--seed', type=str, required=True,
         help="The name of the seed sequence.")
     parser.add_argument(
+        '--inferred-naive-name', type=str, required=True,
+        help="""What do we call the partis-inferred naive sequence when we inject it among the other (input) sequences.""")
+    parser.add_argument(
         '--output-path', type=str, required=True,
         help="Path to output FASTA file.")
 
@@ -27,17 +30,16 @@ if __name__ == '__main__':
     with open(args.data_dir + '/info.yaml', 'r') as f:
         yaml_dict = yaml.load(f)
 
-    param_dir = yaml_dict["samples"][args.sample]["parameter-dir"]
-    locus = yaml_dict["samples"][args.sample]["meta"]["locus"]
-    annotation_path = yaml_dict["samples"][args.sample]["seeds"][args.seed]["cluster-annotation-file"]
-    partition_path = yaml_dict["samples"][args.sample]["seeds"][args.seed]["partition-file"]
+    sample = yaml_dict["samples"][args.sample]
+    locus = sample["meta"]["locus"]
+    partition_path = sample["seeds"][args.seed]["partition-file"]
 
     os.system("export PARTIS=${PWD%/}/lib/cft/partis;" +\
               "lib/cft/bin/process_partis.py" +\
-              " --cluster-annotation-file " + annotation_path +\
               " --partition-file " + partition_path +\
               " --seqs-out " + args.output_path +\
-              " --parameter-dir " + param_dir +\
+              (" --parameter-dir " + sample["parameter-dir"] if sample.get("glfo-dir") else "") +\
               " --locus " + locus +\
+              " --inferred-naive-name inferred_naive" +\
               " --remove-frameshifts --remove-stops" +\
               " --remove-mutated-invariants --indel-reversed-seqs")

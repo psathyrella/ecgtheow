@@ -149,6 +149,11 @@ Script.AddOption("--seed",
         default=None,
         help="What seed should we use? - CFT")
 
+Script.AddOption('--inferred-naive-name',
+        dest='inferred_naive_name',
+        default='inferred_naive',
+        help="""What do we call the partis-inferred naive sequence when we inject it among the other (input) sequences.""")
+
 Script.AddOption('--nprune',
         dest="nprune",
         type='str',
@@ -240,6 +245,7 @@ def get_options(env):
         data_dir = env.GetOption("data_dir"),
         sample = env.GetOption("sample"),
         seed = env.GetOption("seed"),
+        inferred_naive_name = env.GetOption("inferred_naive_name"),
         nprune = [int(x) for x in env.GetOption("nprune").split(",")],
 
         # BEAST/RevBayes inference arguments
@@ -411,6 +417,7 @@ elif options["cft_data"]:
             "python/parse_partis_data.py " + options["data_dir"] \
                     + " --sample " + options["sample"] \
                     + " --seed " + options["seed"] \
+                    + " --inferred-naive-name " + options["inferred_naive_name"] \
                     + " --output-path $TARGET")
         env.Depends(cluster_seqs, "python/parse_partis_data.py")
         env.Depends(cluster_seqs, "lib/cft/bin/process_partis.py")
@@ -443,7 +450,7 @@ elif options["cft_data"]:
         pruned_cluster_seqids = env.Command(
             path.join(outdir, "pruned_cluster_seqids.txt"),
             c["cluster_fasttree"],
-            "lib/cft/bin/prune.py --naive naive --seed " + options["seed"] + " $SOURCE -n " + str(c["nprune"]["value"]) + " --strategy seed_lineage $TARGET")
+            "lib/cft/bin/prune.py --naive {} --seed {} $SOURCE -n {} --strategy seed_lineage $TARGET".format(options["inferred_naive_name"], options["seed"], str(c["nprune"]["value"]) ))
         env.Depends(pruned_cluster_seqids, "lib/cft/bin/prune.py")
         return pruned_cluster_seqids
 
@@ -469,7 +476,7 @@ elif options["cft_data"]:
         pruned_cluster_fasttree_png = env.Command(
             path.join(outdir, "pruned_cluster_fasttree.png"),
             [c["cluster_fasttree"], c["pruned_cluster_seqids"]],
-            "xvfb-run -a python/annotate_fasttree_tree.py $SOURCES --naive naive --seed " + options["seed"] + " --output-path $TARGET")
+            "xvfb-run -a python/annotate_fasttree_tree.py $SOURCES --naive {} --seed {} --output-path $TARGET".format(options["inferred_naive_name"], options["seed"]))
         env.Depends(pruned_cluster_fasttree_png, "python/annotate_fasttree_tree.py")
         return pruned_cluster_fasttree_png
 
@@ -499,10 +506,7 @@ def naive(outdir, c):
     return env.Command(
         path.join(outdir, "naive.txt"),
         None,
-        "echo " + \
-       ("_naive_" if inf_setting["program_name"] == "revbayes" and
-                     not inf_setting["naive_correction"] else "naive") + \
-        " > $TARGET")
+        "echo {} > $TARGET".format(options["inferred_naive_name"])) 
 
 @w.add_target()
 def templater_output(outdir, c):
@@ -520,7 +524,7 @@ def templater_output(outdir, c):
     return env.Command(
         outpath,
         [templater, template, c["input_seqs"]],
-        "$SOURCES --naive naive" + \
+        "$SOURCES --naive " + options["inferred_naive_name"] + \
         " --iter " + str(inf_setting["mcmc_iter"]) + \
         " --thin " + str(inf_setting["mcmc_thin"]) + \
        (" --naive-correction" if inf_setting["naive_correction"] else "") + \
